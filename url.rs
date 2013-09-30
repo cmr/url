@@ -7,8 +7,10 @@
 //! secondary goal.
 
 extern mod extra;
+
 use std::vec;
-use std::ascii::OwnedStrAsciiExt;
+use std::rt::io::net::ip::{IpAddr};
+use std::ascii::{OwnedStrAsciiExt, AsciiCast};
 
 use extra::hex::{FromHex, ToHex};
 
@@ -135,6 +137,38 @@ pub fn percent_encode(s: &str, f: &fn(char) -> bool) -> ~str {
     std::str::from_chars(v) // allocation
 }
 
+pub enum Host {
+    Domain(~[~str]),
+    Ipv6Addr(IpAddr)
+}
+
+pub fn parse_host(input: &str) -> Option<Host> {
+    if input.len() == 0 { return None; }
+    if input[0] == ('[' as u8) {
+        if input[input.len()-1] != (']' as u8) {
+            return None;
+        } else {
+            return Some(Ipv6Addr(from_str(input.slice(1, input.len()-1)).unwrap()));
+        }
+    }
+
+    if !input.is_ascii() {
+        return None; // TODO: IDNA ToASCII here
+    }
+
+    // TODO: there are more domain label seps than .
+    Some(Domain(input.split_iter('.').map(|x| x.to_owned()).to_owned_vec()))
+}
+
+impl ToStr for Host {
+    fn to_str(&self) -> ~str {
+        match self {
+            &Domain(ref l) => l.connect("."),
+            &Ipv6Addr(ref a) => a.to_str()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,6 +216,18 @@ mod tests {
     fn percent_encode_normal(bh: &mut BenchHarness) {
         do bh.iter {
             percent_encode("Sinéad O’Connor", default_enc);
+        }
+    }
+
+    #[test]
+    fn smoke_test_parse_host() {
+        let hosts = ~[
+            ~"[2607:f0d0:1002:51::4]",
+            ~"a.b.c",
+            ~"a."
+        ];
+        for host in hosts.iter() {
+            parse_host(host.as_slice()).unwrap();
         }
     }
 }
