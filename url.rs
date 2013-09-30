@@ -38,7 +38,7 @@ fn is_hex(c: u8) -> bool {
 
 /// Percent decode a string.
 ///
-/// Returns None if `inp` is not ASCII or if percent decoding it creates
+/// Returns Err if `inp` is not ASCII or if percent decoding it creates
 /// invalid UTF-8.
 pub fn percent_decode(string: &str) -> Result<~str, PercentDecodeError> {
     let mut num_percents = 0;
